@@ -1413,6 +1413,7 @@ class Geo extends REST_Controller {
         $this->email->subject('GeoEnlace - Nuevo mensaje');
         $this->email->message($template); 
         $exito = $this->email->send();
+        var_dump('no one survives');
         var_dump($this->email);
         if ($exito) {
             //echo $template;
