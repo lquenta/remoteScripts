@@ -1414,7 +1414,7 @@ class Geo extends REST_Controller {
         $this->email->message($template); 
         $exito = $this->email->send();
         var_dump(' OMG..');
-        var_dump($this->email);
+        //var_dump($this->email);
         if ($exito) {
             //echo $template;
             return TRUE;
