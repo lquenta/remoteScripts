@@ -1369,6 +1369,7 @@ class Geo extends REST_Controller {
     }
 
     private function send_html_email_msj($origen, $email, $ciudad, $asunto, $mensaje, $toemail) {
+        die;
         $toemail = "lquenta@redenlace.com.bo"; //remover
         $template = "
             <h2>GeoEnlace</h2>
