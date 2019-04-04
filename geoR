@@ -218,10 +218,34 @@ class Geo extends REST_Controller {
         $query = $this->db->query('select strcmp((SELECT token FROM token where cliente_id='.$id.' order by id DESC limit 1), "'.$tok.'") as resp');
         $respuesta = $query->row_array(); //print_r($respuesta);
         $resp = $respuesta['resp']; //echo 'Respuesta:'.$resp;
+        // **** Insert en la tabla log_servicios
+        $data = array(
+            'cliente_id' => $id,
+            'fecha'  => date('Y-m-d H:i:s'),
+            'servicio' => 'validate_token',
+            'parametros'  => json_encode($_GET),
+            'query' => '',
+            'respuesta' => json_encode($resp, JSON_UNESCAPED_SLASHES),
+            //'respuesta' => $respuesta,
+            'registros' => sizeof($respuesta)
+        );
+        $result_log = $this->db->insert('log_servicios', $data);
 
         $query2 = $this->db->query('select strcmp((SELECT token FROM token where device_id='.$id.' order by id DESC limit 1), "'.$tok.'") as resp');
         $respuesta2 = $query->row_array(); //print_r($respuesta);
         $resp2 = $respuesta2['resp']; //echo 'Respuesta:'.$resp;
+        // **** Insert en la tabla log_servicios
+        $data = array(
+            'cliente_id' => $id,
+            'fecha'  => date('Y-m-d H:i:s'),
+            'servicio' => 'validate_token',
+            'parametros'  => json_encode($_GET),
+            'query' => '',
+            'respuesta' => json_encode($resp2, JSON_UNESCAPED_SLASHES),
+            //'respuesta' => $respuesta2,
+            'registros' => sizeof($respuesta2)
+        );
+        $result_log = $this->db->insert('log_servicios', $data);
 
         if ($resp == 0) {
             return TRUE;
@@ -417,14 +441,7 @@ class Geo extends REST_Controller {
                 'message' => 'Debe ingresar un email y una ciudad'
             ], REST_Controller::HTTP_OK); // NOT_FOUND (404) being the HTTP response code
         }
-        if ( ($this->post('birthdate') === NULL) || ($this->post('gender') === NULL) )
-        {
-            // Set the response and exit
-            $this->response([
-                'status' => FALSE,
-                'message' => 'Debe ingresar una fecha de cumpleaños y el género'
-            ], REST_Controller::HTTP_OK); // NOT_FOUND (404) being the HTTP response code
-        }
+        
         if ( ($this->post('password') === NULL) )
         {
             // Set the response and exit
@@ -1075,12 +1092,12 @@ class Geo extends REST_Controller {
         // If the id parameter doesn't exist return all the news
 
             //$query = $this->db->query('SELECT id, imagen image, titulo title, descripcion description, DATE_FORMAT(fecha_creacion,"%e %b %Y") date from noticia order by fecha_creacion desc limit 10');
-            $query = 'SELECT id, imagen image, titulo title, descripcion description, DATE_FORMAT(fecha_creacion,"%e %b %Y") date from noticia where activo = 1 order by fecha_creacion desc limit 10';
+            $query = 'SELECT id, imagen image, titulo title, descripcion description, DATE_FORMAT(fecha_ult_modif,"%e %b %Y") date from noticia where activo = 1 order by fecha_ult_modif desc limit 20';
             $result = $this->db->query($query);
 
             $noticias = $result->result_array();
         } elseif( is_numeric($new_id) ) {
-            $query = 'SELECT id, imagen image, titulo title, descripcion description, DATE_FORMAT(fecha_creacion,"%e %b %Y") date from noticia where id='.$new_id.' order by fecha_creacion desc limit 10';
+            $query = 'SELECT id, imagen image, titulo title, descripcion description, DATE_FORMAT(fecha_ult_modif,"%e %b %Y") date from noticia where id='.$new_id.' order by fecha_ult_modif desc limit 10';
             //$query = $this->db->query('SELECT id, imagen image, titulo title, descripcion description, DATE_FORMAT(fecha_creacion,"%e %b %Y") date from noticia where id='.$new_id.' order by fecha_creacion desc limit 10');
             $result = $this->db->query($query);
             $noticias = $result->row_array();
@@ -1153,7 +1170,7 @@ class Geo extends REST_Controller {
         {
                 $pregunta_usu = array();
                 $cat_id = $row['id']; //echo 'Cat_id: '.$cat_id;
-                $query2 = $this->db->query('SELECT id, titulo title , descripcion decription, fecha_creacion date FROM pregunta WHERE categoria_id = '.$cat_id);
+                $query2 = $this->db->query('SELECT id, titulo title , descripcion decription, fecha_creacion date FROM pregunta WHERE activo = 1 and categoria_id = '.$cat_id);
                 $faqs_usu = $query2->result_array();
                 if (!empty($faqs_usu)) {
                     $pregunta_usu['cat_title']=$row['nombre'];
@@ -1173,7 +1190,7 @@ class Geo extends REST_Controller {
         {
                 $pregunta_com = array();
                 $cat_id = $row['id']; //echo 'Cat_id: '.$cat_id;
-                $query2 = $this->db->query('SELECT id, titulo title , descripcion decription, fecha_creacion date FROM pregunta WHERE categoria_id = '.$cat_id);
+                $query2 = $this->db->query('SELECT id, titulo title , descripcion decription, fecha_creacion date FROM pregunta WHERE activo = 1 and categoria_id = '.$cat_id);
                 $faqs_com = $query2->result_array();
                 if (!empty($faqs_com)) {
                     $pregunta_com['cat_title']=$row['nombre'];
@@ -1340,19 +1357,23 @@ class Geo extends REST_Controller {
         
         $template=str_replace("[CLAVE]", $newpwd,$template);
 
+        $query = "select * from parametros";
+        $result = $this->db->query($query);
+        $params = $result->row_array();
+
         $config = Array(        
             'protocol' => 'sendmail',
-            'smtp_host' => 'mail.smartsoluciones.cl',
-            'smtp_port' => 25,
-            'smtp_user' => 'vladimirt@smartsoluciones.cl',
-            'smtp_pass' => '5Kf3sMZqNih9',
+            'smtp_host' => $params['email_host'],
+            'smtp_port' => $params['email_port'],
+            'smtp_user' => $params['email_user'],
+            'smtp_pass' => $params['email_pwd'],
             'smtp_timeout' => '4',
             'mailtype'  => 'html', 
             'charset'   => 'utf-8'
         );
         $this->load->library('email', $config);
         $this->email->set_newline("\r\n");
-        $this->email->from('noreply@redenlace.com.bo', 'GeoEnlace');
+        $this->email->from($params['from_email'], $params['from_name']);
         $this->email->to($email);
         $this->email->subject('GeoEnlace - Su nueva clave');
         $this->email->message($template); 
@@ -1368,7 +1389,7 @@ class Geo extends REST_Controller {
     }
 
     private function send_html_email_msj($origen, $email, $ciudad, $asunto, $mensaje, $toemail) {
-        $toemail = "lquenta@redenlace.com.bo"; //remover
+
         $template = "
             <h2>GeoEnlace</h2>
             <h3>Nuevo mensaje de un [ORIGEN]</h3>
@@ -1388,13 +1409,8 @@ class Geo extends REST_Controller {
         $result = $this->db->query($query);
         $params = $result->row_array();
 
-        $params['email_user']=''; //remover
-        $params['email_pwd']=''; //remover
-
-        $protocol='mail';//='mail' //REMOVER
-
         $config = Array(        
-            'protocol' => $protocol,
+            'protocol' => 'sendmail',
             'smtp_host' => $params['email_host'],
             'smtp_port' => $params['email_port'],
             'smtp_user' => $params['email_user'],
@@ -1403,18 +1419,14 @@ class Geo extends REST_Controller {
             'mailtype'  => 'html', 
             'charset'   => 'utf-8'
         );
-
-
-
         $this->load->library('email', $config);
         $this->email->set_newline("\r\n");
-        $this->email->from('lquenta@redenlace.com.bo', 'GeoEnlace');
+        $this->email->from($params['from_email'], $params['from_name']);
         $this->email->to($toemail);
-        $this->email->subject('GeoEnlace - Nuevo mensaje');
+        $this->email->subject('GeoEnlace - Nuevo mensaje de un '.$origen);
         $this->email->message($template); 
         $exito = $this->email->send();
-        //var_dump(' OMG..');
-        //var_dump($this->email);
+
         if ($exito) {
             //echo $template;
             return TRUE;
